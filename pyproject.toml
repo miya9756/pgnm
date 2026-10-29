@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pgnm-paper"
+version = "1.0.0"
+description = "PGNM and the code behind every table and figure of the paper"
+requires-python = ">=3.10"
+license = {text = "CC-BY-NC-ND-4.0"}
+dependencies = ["numpy>=1.24", "scipy>=1.10", "numba>=0.59", "opencv-python>=4.8", "pillow>=9", "matplotlib>=3.7"]
+
+[project.optional-dependencies]
+appearance = ["torch>=2.1", "lpips==0.1.4", "dists-pytorch==0.1"]
+
+[tool.setuptools.packages.find]
+include = ["pgnm*", "metrics*", "experiments*", "baselines*", "figures*"]
