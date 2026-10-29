@@ -33,6 +33,23 @@ Film-grain presets expect the clean image after its radius's 7×7 blur B
 (`presets/film/blur.json`, see `experiments.film.expected_image`). How the
 model works and how to read its code: [pgnm/README.md](pgnm/README.md).
 
+## Web studio
+
+`web/` runs PGNM in the browser: open or drop a photo, pick a camera–ISO or a
+film grain, compare clean and noisy with the split, save a PNG. Nothing is
+uploaded; the latent field is the same valid convolution as `pgnm/model.py`,
+computed in tiles by Web Workers, with the Gaussian noise drawn from a hash of
+(seed, pixel) instead of a template bank. Camera looks are the SIDD presets plus
+the denoising presets for the other ISOs; film looks are the Newson radii (after
+their blur B) and the *Nocturne* grain. `.github/workflows/web.yml` builds and
+tests it on every change and publishes `main` to GitHub Pages.
+
+```bash
+pip install './pgnm[images]'
+python web/build.py _site && python -m http.server -d _site   # http://localhost:8000
+node --test web/tests/engine.test.mjs                          # browser engine vs pgnm/
+```
+
 ## Layout
 
 | Path                     | Contents                                                                          |
@@ -49,6 +66,7 @@ model works and how to read its code: [pgnm/README.md](pgnm/README.md).
 | `experiments/`         | one module per table: fit, render, score, table stages                            |
 | `baselines/`           | adapters for the published generators, our Zhang23, fetching and environments     |
 | `figures/`             | one script per figure                                                             |
+| `web/`                 | the browser studio: engine, interface, build script and tests                     |
 
 ## Paper to code
 
