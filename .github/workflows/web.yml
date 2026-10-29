@@ -1,0 +1,59 @@
+name: Web studio
+
+on:
+  push:
+    paths:
+      - "web/**"
+      - "pgnm/**"
+      - "presets/**"
+      - ".github/workflows/web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pgnm/pyproject.toml
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install pgnm
+        run: pip install './pgnm[images]'
+      - name: Build the site
+        run: python web/build.py _site
+      - name: Test the browser engine against pgnm
+        run: node --test web/tests/engine.test.mjs
+        env:
+          PYTHON: python
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
