@@ -26,8 +26,6 @@
       <i class="dot" aria-hidden="true"></i><span>PGNM</span>
     </a>
     <div class="actions">
-      <button class="icon" id="reroll" title="New noise  (R)" aria-label="New noise"><svg><use href="#i-dice"/></svg></button>
-      <i class="sep" aria-hidden="true"></i>
       <button class="icon" id="open" title="Open image  (O)" aria-label="Open image"><svg><use href="#i-open"/></svg></button>
       <button class="icon primary" id="save" title="Save PNG  (S)" aria-label="Save PNG"><svg><use href="#i-save"/></svg></button>
     </div>
@@ -42,10 +40,15 @@
     <div class="split" role="slider" tabindex="0" aria-label="Compare" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
       <i class="split-line"></i><span class="split-knob"><svg><use href="#i-split"/></svg></span>
     </div>
-    <div class="zoom" role="group" aria-label="Zoom">
-      <button data-zoom="fit" title="Fit  (F)">Fit</button>
-      <button data-zoom="1" title="100%  (1)">1:1</button>
-      <button data-zoom="2" title="200%  (2)">2:1</button>
+    <div class="dock">
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button data-zoom="fit" title="Fit  (F)">Fit</button>
+        <button data-zoom="1" title="100%  (1)">1:1</button>
+        <button data-zoom="2" title="200%  (2)">2:1</button>
+      </div>
+      <button class="seed" id="reroll" title="New noise  (R)" aria-label="New noise, seed 2026">
+        <svg><use href="#i-dice"/></svg><span id="seed">2026</span>
+      </button>
     </div>
     <div class="drop" aria-hidden="true"><svg><use href="#i-image"/></svg></div>
   </main>

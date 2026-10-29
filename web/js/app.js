@@ -12,7 +12,7 @@ const pool = new Pool();
 const viewer = new Viewer($("#viewer"), { onZoom: showZoom });
 const presets = new Map();           // id -> manifest entry
 const loaded = new Map();            // id -> Promise<{ id, kernels, g, blur }>
-const state = { source: null, after: null, look: null, chosen: {}, seed: 1, serial: 0, idle: Promise.resolve(), finish: null };
+const state = { source: null, after: null, look: null, chosen: {}, seed: 2026, serial: 0, idle: Promise.resolve(), finish: null };
 
 // Looks ------------------------------------------------------------------------------
 
@@ -160,7 +160,7 @@ async function open(file) {
 async function save() {
   if (!state.source) return;
   await state.idle;
-  const name = `${state.source.name}-${state.look.id}.png`;
+  const name = `${state.source.name}-${state.look.id}-${state.seed}.png`;
   state.after.toBlob((blob) => {
     const link = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
     link.click();
@@ -169,8 +169,13 @@ async function save() {
 }
 
 function reroll() {
-  state.seed = (state.seed * 747796405 + 2891336453) >>> 0;
+  // Four-digit seeds are easy to read off the dock and the saved file name.
+  let seed;
+  do seed = Math.floor(Math.random() * 10000); while (seed === state.seed);
+  state.seed = seed;
   const button = $("#reroll");
+  $("#seed").textContent = String(seed).padStart(4, "0");
+  button.setAttribute("aria-label", `New noise, seed ${seed}`);
   button.classList.remove("spin");
   void button.offsetWidth;
   button.classList.add("spin");
