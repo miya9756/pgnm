@@ -1,5 +1,9 @@
 # Parametric Gaussian Noise Mixer (PGNM): Unified Synthesis of Camera Noise and Film Grain
 
+[Paper (arXiv:2610.39868)](https://arxiv.org/abs/2610.39868) ·
+[Web studio](https://miya9756.github.io/pgnm/) ·
+[Project page and playground](https://miya9756.github.io/mingyang-song.github.io/projects/grain/)
+
 PGNM synthesizes noise from two fitted arrays: a full RGB convolution tensor
 that turns independent Gaussian noise into a correlated latent field, and an
 empirical lookup that maps each latent value, given the clean intensity, to a
@@ -7,7 +11,8 @@ signed residual. Both are estimated directly from clean/noisy image pairs, with
 no neural network and no physical image-formation model.
 
 This repository contains the paper ([PGNM.pdf](PGNM.pdf), a technical report
-with its supplementary material), the method (`pgnm/`), the presets fitted for
+with its supplementary material, also on
+[arXiv:2610.39868](https://arxiv.org/abs/2610.39868)), the method (`pgnm/`), the presets fitted for
 the paper (`presets/`) and the code behind every table and figure of the main
 paper.
 
@@ -133,6 +138,20 @@ the paper's presets, outputs and scores exactly. The exception is DnCNN
 training for Tab. 2, which uses cuDNN autotuning as the reported runs did and
 is therefore reproducible up to training noise; evaluating the shipped
 checkpoints reproduces Tab. 2 exactly.
+
+## Citation
+
+```bibtex
+@misc{song2026pgnm,
+  title         = {Parametric Gaussian Noise Mixer ({PGNM}): Unified Synthesis of Camera Noise and Film Grain},
+  author        = {Song, Mingyang},
+  year          = {2026},
+  eprint        = {2610.39868},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CV},
+  url           = {https://arxiv.org/abs/2610.39868}
+}
+```
 
 ## License
 
