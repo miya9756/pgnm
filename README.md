@@ -144,7 +144,7 @@ checkpoints reproduces Tab. 2 exactly.
 ```bibtex
 @misc{song2026pgnm,
   title         = {Parametric Gaussian Noise Mixer ({PGNM}): Unified Synthesis of Camera Noise and Film Grain},
-  author        = {Song, Mingyang},
+  author        = {Song, Mingyang and Rodr{\'\i}guez Mu{\~n}oz, Mart{\'\i}n},
   year          = {2026},
   eprint        = {2610.39868},
   archivePrefix = {arXiv},
@@ -155,8 +155,8 @@ checkpoints reproduces Tab. 2 exactly.
 
 ## License
 
-© 2026 Mingyang Song. The code, presets, checkpoints and paper in this
-repository are licensed under [CC BY-NC-ND 4.0](LICENSE)
+© 2026 Mingyang Song and Martín Rodríguez Muñoz. The code, presets, checkpoints
+and paper in this repository are licensed under [CC BY-NC-ND 4.0](LICENSE)
 (https://creativecommons.org/licenses/by-nc-nd/4.0/): you may use them and share
 them unmodified for non-commercial purposes, with attribution; you may adapt them
 for your own use, but not share adapted versions. The datasets, the published
