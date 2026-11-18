@@ -14,4 +14,4 @@ dependencies = ["numpy>=1.24", "scipy>=1.10", "numba>=0.59", "opencv-python>=4.8
 appearance = ["torch>=2.1", "lpips==0.1.4", "dists-pytorch==0.1"]
 
 [tool.setuptools.packages.find]
-include = ["pgnm*", "metrics*", "experiments*", "baselines*", "figures*"]
+include = ["pgnm*", "metrics*", "experiments*", "baselines*", "figures*", "textures*"]
