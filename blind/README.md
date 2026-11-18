@@ -120,6 +120,42 @@ too-weak shadow noise of every single-image estimate (above), carried into
 the denoiser. PSNR barely registers it; fixing the black level is the next
 step that would show.
 
+## Black level: a clipping model, and its limit
+
+`estimate.clipping_correction` (or `calibrated_clip`): for each denoised level
+u, fit the unclipped quantiles of y with clip(m + s·t), then give clean code
+x = m(u) the observed y-distribution of that u; codes where the model clips
+less than 1% keep the original lookup. It assumes noise is zero-mean before
+clipping.
+
+Fitting the *true* presets this way shows why black is hard. Codes ≥ 3 are
+largely clipping (green and blue at codes 4–20: fit error 1–3 codes, pre-clip
+offset −1 to −4). But codes 0–2 are a separate "crushed black" population: for
+N6_800 green, y has mean 22 / std 22 at clean 0–2 against 11 / 13 at code 3
+(S6_1600: 27 / 39 vs 12 / 18). Clean pixels at 0 are themselves clipped, with
+darker-than-black scenes behind them, so their noise is not zero-mean before
+clipping. Which clean level an observed population belongs to is then not
+identifiable from one image. The coffee image used in the shadow figure above
+has almost no clean pixels at 0–2, so no estimate from it could know that row.
+
+Estimating from images that do contain crushed blacks (astronaut, retina:
+11–21% exact zeros), DnCNN, calibrated:
+
+| source → darkest region of | noise | black std R/G/B: true | calibrated | + clipping | held-out W1: calibrated → + clipping |
+|---|---|---|---|---|---|
+| astronaut → retina | N6_800 | 35/23/33 | 10/9/12 | 11/10/14 | 1.54 → 1.45 |
+| astronaut → retina | S6_1600 | 54/40/40 | 34/14/16 | 40/16/23 | 4.00 → 4.57 |
+| retina → astronaut | N6_800 | 36/23/35 | 7/6/8 | 8/7/10 | 2.87 → 2.69 |
+| retina → astronaut | S6_1600 | 54/39/42 | 25/11/13 | 28/21/16 | 5.96 → 6.16 |
+
+The clipping model moves black the right way and is roughly neutral elsewhere,
+but closes only a small part of the gap. Exempting censored tiles (≥ 10% of y at
+0) from the envelope, so that crushed-black tiles are not rejected as texture,
+was tried and removed: it let dark textured tiles in, and held-out strength
+error rose to 22–72%. Closing the gap needs information one image lacks: a
+per-camera black-level prior from pair data, or an explicit rule such as "the
+darkest censored population is clean 0".
+
 ## Findings
 
 1. **The lower envelope is the robust step.** With every denoiser it is the

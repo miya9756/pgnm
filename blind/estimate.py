@@ -250,4 +250,71 @@ def calibrated(noisy, denoise, iterations=4, simulations=2, seed=0, history=None
     return parameters(correlation, lookup, f"single image: calibrated x{iterations}")
 
 
+def calibrated_clip(noisy, denoise, **options):
+    return clipping_correction(calibrated(noisy, denoise, **options))
+
+
 ESTIMATORS = dict(naive=naive, masked=masked, envelope=envelope, calibrated=calibrated)
+
+
+# Clipping model ---------------------------------------------------------------------
+
+def clipping_correction(params, recipe_suffix=" + clipping model", min_clipped=0.01):
+    """Re-index a lookup estimated against x̂ to clean intensities, assuming clipping.
+
+    The estimated lookup gives, for each denoised level u (x̂ ≈ E[y]), the
+    quantiles q_u(t) = u + g(u, t) of y. Model: y = clip(m + s·z), z standard
+    normal, noise zero-mean before clipping. Fitting q_u(t) ≈ m + s·t on the
+    unclipped quantiles (|t| <= 2, 0 < q < 255 codes) gives the pre-clip mean m(u)
+    and strength s(u). The clean code x is identified with m (zero-mean noise),
+    so clean code x takes the y-distribution of the u with m(u) = x: the clipped
+    mass and the positive mean at black come from the data, not from x̂. Beyond the
+    range of fitted m, a Gaussian with the nearest s is used; rendering clips it.
+    Codes where the model clips less than `min_clipped` of the mass keep the
+    original lookup. A true black-level offset (crushed blacks, noise not
+    zero-mean before clipping) is not identifiable from one image and is not
+    modeled.
+    """
+    knots = fitting.GAUSSIAN_KNOTS
+    lookup = np.asarray(params["marginal"]["g"]) * 255          # (3, 256, 25) in codes
+    codes = np.arange(256, dtype=float)
+    out = lookup.copy()
+    central = np.abs(knots) <= 2
+    for c in range(3):
+        means, sigmas, levels = [], [], []
+        for u in range(256):
+            q = u + lookup[c, u]
+            use = central & (q > .5) & (q < 254.5)
+            if use.sum() < 5:
+                continue
+            slope, intercept = np.polyfit(knots[use], q[use], 1)
+            if slope <= 0:
+                continue
+            means.append(intercept); sigmas.append(slope); levels.append(u)
+        if len(levels) < 8:
+            continue
+        means = np.maximum.accumulate(np.array(means))             # m(u) must increase with u
+        levels, sigmas = np.array(levels, float), np.array(sigmas)
+        keep = np.r_[True, np.diff(means) > 1e-6]
+        means, levels, sigmas = means[keep], levels[keep], sigmas[keep]
+        # Only where the model clips more than `min_clipped` of the mass at either end.
+        def clipped(x):
+            sigma = np.interp(x, means, sigmas)
+            return fitting.normal_cdf(-x / sigma) + fitting.normal_cdf(-(255 - x) / sigma)
+        for x in range(256):
+            if clipped(x) < min_clipped:
+                continue
+            if means[0] <= x <= means[-1]:
+                u = np.interp(x, means, levels)
+                lo = int(np.floor(u)); hi = min(lo + 1, 255); w = u - lo
+                quantiles = (1 - w) * (lo + lookup[c, lo]) + w * (hi + lookup[c, hi])
+                out[c, x] = quantiles - x
+            else:   # outside the fitted range: Gaussian with the nearest strength
+                s = sigmas[0] if x < means[0] else sigmas[-1]
+                out[c, x] = s * knots
+    out = np.maximum.accumulate(out, axis=-1) / 255
+    corrected = dict(params)
+    corrected["marginal"] = dict(params["marginal"], g=np.clip(out, -1, 1).tolist())
+    corrected["provenance"] = dict(params.get("provenance", {}),
+                                   recipe=params.get("provenance", {}).get("recipe", "") + recipe_suffix)
+    return validate(corrected)
