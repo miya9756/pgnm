@@ -94,6 +94,32 @@ clipping of zero-mean noise (σ ≈ 62 gives mean 25 and std 36 after clipping),
 so a clipping model mapping x̂ back to true black is the likely fix.
 (`python -m blind.figure_visual N6_800`, `... shadows`)
 
+## Does it help the denoiser?
+
+`python -m blind.finetune` (needs PyTorch; CPU is enough). The native DnCNN is
+fine-tuned for 300 steps (batch 16, 64² patches, Adam 1e-4) on the five *other*
+clean images plus synthetic noise from an estimate, then denoises the test
+image again. One test image (coffee) and one training run per row, so
+differences of a few tenths of a dB are within training noise.
+
+| noise | noisy | native DnCNN | fine-tuned: naive | fine-tuned: calibrated | fine-tuned: true preset |
+|---|---|---|---|---|---|
+| N6_800 | 24.72 / 0.565 | 27.18 / 0.764 | 28.92 / 0.804 | 29.24 / **0.812** | **29.57** / 0.796 |
+| S6_1600 | 19.98 / 0.351 | 24.84 / 0.684 | 25.58 / 0.686 | **26.10 / 0.709** | 25.46 / 0.702 |
+
+(PSNR dB / SSIM against the true clean image.)
+
+![Native vs fine-tuned DnCNN, N6_800](finetune_N6_800.png)
+
+S6_1600: [finetune_S6_1600.png](finetune_S6_1600.png). Fine-tuning on any
+estimate keeps much more detail than the native DnCNN (crema specks, wood
+grain, the spoon) and gains 1.7–2.1 dB at N6_800. Visually, though, the
+estimate-trained models leave colored speckle in the dark cup interior, which
+the true-preset model removes, although its PSNR is no higher: that is the
+too-weak shadow noise of every single-image estimate (above), carried into
+the denoiser. PSNR barely registers it; fixing the black level is the next
+step that would show.
+
 ## Findings
 
 1. **The lower envelope is the robust step.** With every denoiser it is the
