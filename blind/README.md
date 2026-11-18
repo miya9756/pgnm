@@ -111,3 +111,34 @@ the covariate.
   images and a modern blind denoiser (Restormer, NAFNet) are the real test.
 * The calibration simulates on x̂; a denoiser that erases much signal in regions
   that look flat breaks it (finding 3).
+
+## Taking it local (hand-off)
+
+State: everything above runs on CPU in this repository with
+`pip install -e . scikit-image`; no PyTorch is needed. Next steps, in order:
+
+1. **A real denoiser.** Any callable from a uint8 H×W×3 image to a uint8 image works
+   (wrap a Restormer, NAFNet, or the DnCNN on GPU):
+
+   ```python
+   from blind import estimate
+   params = estimate.calibrated(noisy_uint8, my_denoiser)      # a pgnm/5 preset
+   from pgnm import save; save("estimated.json", params)
+   ```
+
+   Calibration calls the denoiser 1 + iterations × simulations times (9 by default).
+2. **Real noise, scored against pairs.** For SIDD, estimate from single noisy
+   Validation or Medium images (`PGNM_SIDD_*`, see the top-level README), then
+   score the estimate as `experiments.sidd` scores presets (Tab. 1), next to the
+   preset fitted on that camera–ISO class's pairs. This leaves the in-model test
+   above behind.
+3. **Mismatch diagnosis.** Run two or more different denoisers on the same
+   images; the part of the calibration gap (`history` in `calibrated`) that
+   persists across denoisers and depends only on intensity is a model deficiency;
+   the part that changes with the denoiser is the denoiser.
+4. **Open problems.** The shadow offset needs a generative explanation (e.g.
+   clipping) to become identifiable. Strongly over-smoothing denoisers leak signal
+   that the simulation on x̂ cannot reproduce. Other sensors need only the noise
+   to be additive in some domain, with a covariate still visible after denoising.
+
+Related experiment in this branch: `textures/` (PGNM as a texture model).
