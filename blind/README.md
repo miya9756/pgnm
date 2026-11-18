@@ -63,6 +63,15 @@ RMS per channel as the pilot when that happens.
 
 Per preset: [results.md](results.md).
 
+![Calibration with the DnCNN: one image and the grid](calibration_dncnn.png)
+
+A: on one image, the naive fit counts leaked signal as noise (the peak near
+code 130); the envelope removes it but is too weak above code 90; calibration
+lifts it back to the true curve. B: almost all of that happens in the first
+iteration. C, D: over the grid, calibration removes the envelope's negative
+bias for weak noise; for strong noise (S6_1600, GP_10000) the shadow offset,
+not strength, limits every estimator. (`python -m blind.figure_calibration`)
+
 ## Findings
 
 1. **The lower envelope is the robust step.** With every denoiser it is the
