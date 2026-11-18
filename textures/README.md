@@ -29,6 +29,7 @@ Models (`models.py`), all fitted on 8 samples of 512²:
 | PGNM, normal scores | same, but correlations measured on Φ⁻¹(rank) of the residual: the latent t |
 | Pyramid | 3-level Gaussian pyramid; coarsest is a PGNM, each finer level a PGNM whose clean image is up(coarser) |
 | Predictive pyramid, normal scores | each level first adds a ridge-regularized 9×9 linear prediction of its band from up(coarser) |
+| … final match | the same, then the output's histogram is specified to the training marginal, per channel (Heeger & Bergen) |
 
 Scores (`measures.py`), against 8 fresh reference samples. The *oracle* row
 compares 8 more reference samples with them, so it shows each score's sampling
@@ -40,9 +41,10 @@ listed). It is 0 for a Gaussian field. The cross-scale columns are the
 correlation between local fine-band energy and the coarse value or coarse
 band magnitude.
 
-![Reference, PGNM, PGNM with normal scores, pyramid, predictive pyramid](comparison.jpg)
+![Reference, PGNM, PGNM with normal scores, pyramid, predictive pyramid, with final match](comparison.jpg)
 
-Columns: reference, PGNM, PGNM with normal scores, pyramid, predictive pyramid.
+Columns: reference, PGNM, PGNM with normal scores, pyramid, predictive pyramid,
+predictive pyramid with final match.
 Rows: the six textures in the order above.
 
 ## Findings
@@ -72,13 +74,52 @@ Rows: the six textures in the order above.
    matches its short-range ACF (0.017). Right spectrum, wrong phases. Strokes
    only look closer because their bimodal marginal alone yields a large deficit;
    the samples are blobs, not strokes.
-5. **Marginal drift.** The pyramids' W1 is 2–10× the single-scale one, because
-   chaining nonlinear levels moves the final histogram. Heeger & Bergen's answer
-   (a final histogram match, or a few analysis–synthesis iterations) is the
-   obvious next step.
+5. **Marginal drift, fixed by a final histogram match.** Chaining nonlinear
+   levels moves the output histogram: the predictive pyramid's W1 is 2–10× the
+   single-scale one (1.02 vs 0.13 on `gauss_short`, 3.17 vs 0.96 on `strokes`).
+   Specifying the output histogram to the training marginal brings W1 to 0.07–0.77,
+   close to the oracle's 0.03–0.54, while the correlation errors stay the same
+   or improve (`cascade` ACF ≤ 8: 0.074 → 0.043). The one cost is on `lattice`,
+   whose TV deficit rises from 0.013 to 0.063 (reference 0.010): the
+   remapping sharpens the blobs a little. Matching every level as well, closer
+   to Heeger & Bergen's per-band matching, gave the same W1 and no other gain,
+   so only the output is matched.
 
 The cross-scale correlations turned out to be weak discriminators: a pointwise
 map of a Gaussian field already couples fine energy to the local value.
+
+## Use cases, and is it worth continuing?
+
+As texture synthesis this is not new. The pieces are random-phase noise and
+Gabor noise by example (Galerne et al. 2011, 2012), multiscale synthesis with
+histogram matching (Heeger & Bergen 1995) and joint statistics (Portilla &
+Simoncelli 2000). The ceiling is the same as theirs: one family of textures,
+spectrum plus marginal plus a little cross-scale coupling, and nothing with
+edges, which neural and diffusion models handle far better. So it is not worth
+pursuing as a texture-synthesis method.
+
+It does give PGNM itself something to test:
+
+* **Normal-score correlations in the fitter.** This is the most concrete
+  result. The shipped presets' lookups imply that the paper's fitter
+  underestimates correlations by a factor corr(g(T), T)². In each preset's worst
+  mid-tone that factor is 0.94 for the median SIDD preset and 0.85 for the
+  worst (film 0.99 / 0.84, denoise 0.95 / 0.86). So rendered spatial and color
+  correlations are about 5–15% too weak there. Refitting with `normal_scores`
+  and rescoring Tab. 1 and Tab. 3 needs only the fit and score stages.
+* **Reach beyond 16 px.** Low-frequency components such as high-ISO chroma
+  blotches after a phone ISP, film-scan mottle or large grain radii may need
+  correlations that the 25×25 kernel truncates. The predictive pyramid adds
+  that reach at the same cost per level. The presets cannot answer whether it is
+  needed, because the fitter tapers correlations to zero by lag 16. The first
+  step is to measure correlations of real residuals beyond lag 16 on high-ISO
+  SIDD crops, and only then build on the pyramid.
+* **Guided micro-texture.** Because g conditions on an image, the same model
+  fits noise whose statistics follow a control map (wear, moisture, exposure).
+  That could be a small graphics tool, but the field is crowded.
+* **An "in family" check.** Comparing a target's TV deficit with the fitted
+  model's tells, before any perceptual study, whether a noise or grain is
+  something PGNM can reproduce at all.
 
 ## Full results
 

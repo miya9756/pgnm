@@ -26,6 +26,7 @@ MODELS = dict(
     pgnm_ns=lambda batch: SingleScale.fit(batch, gaussianize=True),
     pyramid=lambda batch: Pyramid.fit(batch),
     predictive=lambda batch: Pyramid.fit(batch, predict=True, gaussianize=True),
+    matched=lambda batch: Pyramid.fit(batch, predict=True, gaussianize=True, match="final"),
 )
 COUNT, SIZE, CROP = 8, 512, 192
 

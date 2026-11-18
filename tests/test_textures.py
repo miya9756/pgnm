@@ -19,13 +19,23 @@ class TextureHarness(unittest.TestCase):
     def test_models_fit_sample_and_score(self):
         train, reference = samples("gauss_short", 2, 1, size=128), samples("gauss_short", 2, 2, size=128)
         models = [SingleScale.fit(train), SingleScale.fit(train, gaussianize=True),
-                  Pyramid.fit(train, levels=2, predict=True, gaussianize=True)]
+                  Pyramid.fit(train, levels=2, predict=True, gaussianize=True),
+                  Pyramid.fit(train, levels=2, predict=True, gaussianize=True, match="final")]
         for model in models:
             rng = np.random.default_rng(0)
             generated = np.stack([to_uint8(model.sample((128, 128, 3), rng)) for _ in range(2)])
             self.assertEqual(generated.shape, reference.shape)
             scores = dict(**measures.compare(reference, generated), **measures.describe(generated[:1]))
             self.assertTrue(all(np.isfinite(v) for v in scores.values() if v is not None))
+
+    def test_histogram_match_reproduces_marginal(self):
+        from textures.models import match_histogram, quantile_table
+        rng = np.random.default_rng(0)
+        target = rng.beta(2, 5, (64, 64, 3)).astype(np.float32)
+        matched = match_histogram(rng.standard_normal((64, 64, 3)).astype(np.float32), quantile_table([target]))
+        for c in range(3):   # per-channel W1 between the matched and target histograms
+            w1 = np.mean(np.abs(np.sort(matched[..., c], None) - np.sort(target[..., c], None)))
+            self.assertLess(w1, 1e-3)
 
     def test_gaussian_texture_has_no_tv_deficit(self):
         rng = np.random.default_rng(0)

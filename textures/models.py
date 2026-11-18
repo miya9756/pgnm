@@ -160,13 +160,41 @@ class Predictor:
         return np.clip(x + detail, 0, 1)
 
 
-class Pyramid:
-    """Coarse-to-fine PGNMs; with `predict`, each level first adds a linear prediction."""
+QUANTILES = 4096
 
-    def __init__(self, params, predictors=None, label="Pyramid PGNM"):
+
+def quantile_table(images):
+    """Per-channel quantiles of the pooled pixels: (QUANTILES + 1, 3)."""
+    pixels = np.concatenate([image.reshape(-1, 3) for image in images])
+    return np.quantile(pixels, np.linspace(0, 1, QUANTILES + 1), axis=0).astype(np.float32)
+
+
+def match_histogram(image, table):
+    """Exact histogram specification by rank, channel by channel (Heeger & Bergen)."""
+    matched = np.empty_like(image)
+    grid = np.linspace(0, 1, len(table))
+    for c in range(image.shape[-1]):
+        values = image[..., c].ravel()
+        rank = np.empty(values.size)
+        rank[np.argsort(values, kind="stable")] = (np.arange(values.size) + .5) / values.size
+        matched[..., c] = np.interp(rank, grid, table[:, c]).reshape(image.shape[:-1])
+    return matched
+
+
+class Pyramid:
+    """Coarse-to-fine PGNMs; with `predict`, each level first adds a linear prediction.
+
+    `match` adds histogram specification to the training marginals: "final"
+    only on the output, "levels" on every pyramid level as it is synthesized.
+    """
+
+    def __init__(self, params, predictors=None, label="Pyramid PGNM", tables=None, match=None):
         self.models = [PGNM(p, workers=4) for p in params]   # finest first, coarsest last
         self.predictors = predictors or [None] * (len(params) - 1)
         self.label = label
+        if match not in (None, "final", "levels"):
+            raise ValueError("match must be None, 'final' or 'levels'")
+        self.tables, self.match = tables, match
 
     @staticmethod
     def gaussian_pyramid(image, levels):
@@ -176,7 +204,7 @@ class Pyramid:
         return pyramid
 
     @classmethod
-    def fit(cls, batch, levels=3, predict=False, gaussianize=False):
+    def fit(cls, batch, levels=3, predict=False, gaussianize=False, match=None):
         pyramids = [cls.gaussian_pyramid(y, levels) for y in _float(batch)]
         params, predictors = [], []
         for k in range(levels):
@@ -189,7 +217,9 @@ class Pyramid:
             predictors.append(predictor)
         params.append(fit([(np.full_like(p[levels], GRAY), p[levels]) for p in pyramids], gaussianize))
         label = ("Predictive pyramid" if predict else "Pyramid") + (", normal scores" if gaussianize else "")
-        return cls(params, predictors, label)
+        label += {None: "", "final": ", final match", "levels": ", matched levels"}[match]
+        tables = [quantile_table([p[k] for p in pyramids]) for k in range(levels + 1)]
+        return cls(params, predictors, label, tables, match)
 
     def sample(self, shape, rng):
         shapes = [shape]
@@ -197,11 +227,15 @@ class Pyramid:
             h, w, c = shapes[-1]
             shapes.append(((h + 1) // 2, (w + 1) // 2, c))
         image = _render_fresh(self.models[-1], np.full(shapes[-1], GRAY, np.float32), rng)
+        if self.match == "levels":
+            image = match_histogram(image, self.tables[-1])
         for k in range(len(self.models) - 2, -1, -1):
             clean = np.clip(_up(image, np.empty(shapes[k])), 0, 1)
             if self.predictors[k] is not None:
                 clean = self.predictors[k](clean)
             image = _render_fresh(self.models[k], clean, rng)
+            if self.match == "levels" or (self.match == "final" and k == 0):
+                image = match_histogram(image, self.tables[k])
         return image
 
 
