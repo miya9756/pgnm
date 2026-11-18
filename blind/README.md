@@ -72,6 +72,28 @@ iteration. C, D: over the grid, calibration removes the envelope's negative
 bias for weak noise; for strong noise (S6_1600, GP_10000) the shadow offset,
 not strength, limits every estimator. (`python -m blind.figure_calibration`)
 
+## What it looks like
+
+![Denoisers and synthesized noise, N6_800](visual_N6_800.png)
+
+Top: what the estimators see (noisy y, the two denoisers' x̂, the unknown
+clean image). Bottom: noise rendered on a held-out image from the true preset
+and from each DnCNN-based estimate, all from the same latent field. S6_1600:
+[visual_S6_1600.png](visual_S6_1600.png).
+
+![True black: every single-image estimate is far too weak](visual_shadows.png)
+
+In mid-tones, envelope and calibrated match the true noise closely (orange suit
+at code 100: std 11/10/17 for both), naive is too strong. On true black (code
+0) every estimate is nearly black (std 8–14), where the true noise is bright
+color speckle (N6_800 std 36/23/35, mean +36/+22/+32; S6_1600 mean +85 in red).
+The denoiser never outputs true black (x̂ ≈ E[y] includes the offset), so no
+pixel tells the lookup what happens there. The averaged scores hide this
+because few held-out pixels are pure black. The numbers are consistent with
+clipping of zero-mean noise (σ ≈ 62 gives mean 25 and std 36 after clipping),
+so a clipping model mapping x̂ back to true black is the likely fix.
+(`python -m blind.figure_visual N6_800`, `... shadows`)
+
 ## Findings
 
 1. **The lower envelope is the robust step.** With every denoiser it is the
